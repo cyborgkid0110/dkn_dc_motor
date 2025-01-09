@@ -7,6 +7,11 @@
 #define BRUSHLESS_CFG   2
 #define STEPPER_CFG     3
 
+#define ONE_BRUSHED_MODE    0
+#define TWO_BRUSHED_MODE    1
+#define BRUSHLESS_MODE      2
+#define STEPPER_MODE        3
+
 #define BRUSHED_MOTOR_TYPE      0
 #define BRUSHLESS_MOTOR_TYPE    1
 #define STEPPER_MOTOR_TYPE      2
@@ -36,6 +41,7 @@ typedef struct motor_cfg {
     bool direction;
 } MotorConfig_t;
 
+// Motor Configuration Database
 MotorConfig_t motor_cfg_db[] = {
     {
         .type_of_motor = BRUSHED_MOTOR_TYPE,
@@ -54,6 +60,7 @@ MotorConfig_t motor_cfg_db[] = {
     //...settings of each motor: motor 1 / motor 2 / brushless / stepper
 };
 
+// This indicates which motor is controlled
 bool motor_controlled[] = {
     ENABLED,    // BRUSHED 1
     DISABLED,   // BRUSHED 2
@@ -61,6 +68,7 @@ bool motor_controlled[] = {
     DISABLED,   // STEPPER
 };
 
+// Find previous motor configuration enabled
 uint8_t goToPreviousMotor(uint8_t motor_opt) {
     for (int i = motor_opt; i >= 0; i--) {
         if (motor_controlled[i] == ENABLED) {
@@ -69,6 +77,7 @@ uint8_t goToPreviousMotor(uint8_t motor_opt) {
     }
 }
 
+// Find next motor configuration enabled
 uint8_t goToNextMotor(uint8_t motor_opt) {
     for (int i = motor_opt; i < NUM_OF_MOTOR; i++) {
         if (motor_controlled[i] == ENABLED) {
@@ -77,8 +86,31 @@ uint8_t goToNextMotor(uint8_t motor_opt) {
     }
 }
 
+// Get motor configuration
 MotorConfig_t getMotorConfig(uint8_t motor) {
     return motor_cfg_db[motor];
+}
+
+//
+void updateControlMode(uint8_t mode) {
+    switch (mode) {
+        case ONE_BRUSHED_MODE:
+            motor_controlled[BRUSHED_1_CFG] = ENABLED;
+            motor_controlled[BRUSHED_2_CFG] = motor_controlled[BRUSHLESS_CFG] = motor_controlled[STEPPER_CFG] = DISABLED; 
+            break;
+        case TWO_BRUSHED_MODE:
+            motor_controlled[BRUSHED_1_CFG] = ENABLED;
+            motor_controlled[BRUSHED_2_CFG] = ENABLED;
+            break;
+        case BRUSHLESS_MODE:
+            motor_controlled[BRUSHLESS_CFG] = ENABLED;
+            motor_controlled[BRUSHED_2_CFG] = motor_controlled[BRUSHED_1_CFG] = motor_controlled[STEPPER_CFG] = DISABLED; 
+            break;
+        case STEPPER_MODE:
+            motor_controlled[STEPPER_CFG] = ENABLED;
+            motor_controlled[BRUSHED_2_CFG] = motor_controlled[BRUSHLESS_CFG] = motor_controlled[BRUSHED_1_CFG] = DISABLED; 
+            break;
+    }
 }
 
 void saveMotorConfig(uint8_t motor, MotorConfig_t* motor_cfg);

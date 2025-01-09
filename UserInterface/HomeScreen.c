@@ -9,16 +9,16 @@
 uint8_t menu_opt = MODE_SELECTION_MENU_OPT;
 
 uint8_t HomeScreen() {
-    if (CheckButtonPressed(BTN_OK) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
         return menu_opt;
     }
 
-    if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         menu_opt = (menu_opt == COMMUNICATION_MENU_OPT)
                     ? COMMUNICATION_MENU_OPT
                     : menu_opt + 1;
     }
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         menu_opt = (menu_opt == MODE_SELECTION_MENU_OPT)
                     ? MODE_SELECTION_MENU_OPT
                     : menu_opt - 1;

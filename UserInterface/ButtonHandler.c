@@ -11,7 +11,7 @@
 #define BTN_PRESSED     0
 #define BTN_RELEASED    1
 
-uint8_t CheckButtonPressed(uint8_t button) {
+uint8_t CheckButtonStatus(uint8_t button) {
     if (getButtonState(button) == BTN_PRESSED && btn_up_flag[button] == BTN_RELEASED) {
         btn_up_flag[button] = BTN_PRESSED;
         return BTN_PRESSED;

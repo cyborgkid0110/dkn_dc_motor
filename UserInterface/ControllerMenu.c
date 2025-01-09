@@ -39,7 +39,7 @@ uint8_t ControllerMenu() {
     switch (controller_menu_state) {
         case FIELD_SELECT_STATE:
             FieldSelect();
-            if (CheckButtonPressed(BTN_BACK) == BTN_PRESSED) {
+            if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
                 return 0;
             }
             break;
@@ -51,19 +51,19 @@ uint8_t ControllerMenu() {
 }
 
 void FieldSelect() {
-    if (CheckButtonPressed(BTN_BACK) == BTN_PRESSED)
+    if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED)
     {
         controller_menu_state = FIELD_SELECT_STATE;
         current_field = MOTOR_TYPE_FIELD;
         saveMotorConfig(motor_option, &motor_cfg);
     }
-    else if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         changeFieldUp();
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         changeFieldDown();
     }
-    else if (CheckButtonPressed(BTN_OK) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
         controller_menu_state = INPUT_STATE;
         switch (current_field) {
             case MOTOR_TYPE_FIELD:
@@ -89,8 +89,8 @@ void FieldSelect() {
 }
 
 void InputHandler() {
-    if (CheckButtonPressed(BTN_BACK) == BTN_PRESSED ||
-        CheckButtonPressed(BTN_OK) == BTN_PRESSED) 
+    if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED ||
+        CheckButtonStatus(BTN_OK) == BTN_PRESSED) 
     {
         controller_menu_state = FIELD_SELECT_STATE;
         current_field = MOTOR_TYPE_FIELD;
@@ -153,12 +153,12 @@ void changeFieldDown() {
 }
 
 void updateMotorField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         saveMotorConfig(motor_option, &motor_cfg);
         motor_option = goToPreviousMotor(motor_option);
         motor_cfg = getMotorConfig(motor_option);
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         saveMotorConfig(motor_option, &motor_cfg);
         motor_option = goToNextMotor(motor_option);
         motor_cfg = getMotorConfig(motor_option);
@@ -166,7 +166,7 @@ void updateMotorField() {
 }
 
 void updateControlPurposeField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         if (motor_cfg.type_of_motor == STEPPER_MOTOR_TYPE) {
             if (motor_cfg.control_purpose == POSITION_CONTROL_PURPOSE) {
                 motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE;
@@ -180,7 +180,7 @@ void updateControlPurposeField() {
                                         ? TORQUE_CONTROL_PURPOSE : SPEED_CONTROL_PURPOSE; 
         }
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         if (motor_cfg.type_of_motor == STEPPER_MOTOR_TYPE) {
             if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
                 motor_cfg.control_purpose == POSITION_CONTROL_PURPOSE;
@@ -197,7 +197,7 @@ void updateControlPurposeField() {
 }
 
 void updateSetPointField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
             motor_cfg.speed_set_point += SPEED_CHANGE_STEP;
         }
@@ -209,7 +209,7 @@ void updateSetPointField() {
             motor_cfg.angle_set_point = (motor_cfg.angle_set_point < 361) ? motor_cfg.angle_set_point : 360;
         }
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
             motor_cfg.speed_set_point -= SPEED_CHANGE_STEP;
             motor_cfg.speed_set_point = (motor_cfg.speed_set_point > 0) ? motor_cfg.speed_set_point : 0;
@@ -227,7 +227,7 @@ void updateSetPointField() {
 }
 
 void updateThresholdField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
             motor_cfg.speed_threshold += SPEED_CHANGE_STEP;
         }
@@ -235,7 +235,7 @@ void updateThresholdField() {
             motor_cfg.current_threshold += TORQUE_CHANGE_STEP;
         }
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
             motor_cfg.speed_threshold -= SPEED_CHANGE_STEP;
             motor_cfg.speed_threshold = (motor_cfg.speed_threshold > 0) ? motor_cfg.speed_threshold : 0;
@@ -248,11 +248,11 @@ void updateThresholdField() {
 }
 
 void updateAngleStepField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
         motor_cfg.angle_step += ANGLE_STEP_CHANGE_STEP;
         motor_cfg.angle_step = (motor_cfg.angle_step < 361) ? motor_cfg.angle_step : 360;
     }
-    else if (CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) {
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
         motor_cfg.angle_step = motor_cfg.angle_step + ANGLE_STEP_CHANGE_STEP;
         motor_cfg.angle_step = (motor_cfg.angle_step > 0 & motor_cfg.angle_step < 361) 
                                 ? motor_cfg.angle_step : 0;
@@ -260,8 +260,8 @@ void updateAngleStepField() {
 }
 
 void updateDirectionField() {
-    if (CheckButtonPressed(BTN_UP) == BTN_PRESSED ||
-        CheckButtonPressed(BTN_DOWN) == BTN_PRESSED) 
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED ||
+        CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) 
     {
         motor_cfg.direction = (motor_cfg.direction == FORWARD_DIRECTION)
                               ? FORWARD_DIRECTION : REVERSE_DIRECTION;
