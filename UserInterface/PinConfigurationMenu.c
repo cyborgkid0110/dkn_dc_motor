@@ -209,16 +209,16 @@ void Indicator_OptionSelection() {
     }
 }
 
-void changeConfigProfile(bool (*getMotor1)(uint8_t*), bool (*getMotor2)(uint8_t*)) {
+void changeConfigProfile(bool (*getMotorCfgProfile1)(uint8_t*), bool (*getMotorCfgProfile2)(uint8_t*)) {
     bool status;
 
     if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        status = getMotor1(&motor_opt);
+        status = getMotorCfgProfile1(&motor_opt);
         if (!status) {
             cfg_profile = INDICATOR_CFG;
         }
     } else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        status = getMotor2(&motor_opt);
+        status = getMotorCfgProfile2(&motor_opt);
         if (!status) {
             cfg_profile = INDICATOR_CFG;
         }
