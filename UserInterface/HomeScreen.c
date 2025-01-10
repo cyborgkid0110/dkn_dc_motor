@@ -12,16 +12,14 @@ uint8_t HomeScreen() {
     if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
         return menu_opt;
     }
-
-    if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        menu_opt = (menu_opt == COMMUNICATION_MENU_OPT)
-                    ? COMMUNICATION_MENU_OPT
-                    : menu_opt + 1;
-    }
-    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        menu_opt = (menu_opt == MODE_SELECTION_MENU_OPT)
-                    ? MODE_SELECTION_MENU_OPT
-                    : menu_opt - 1;
+    switch (menu_opt) {
+        case MODE_SELECTION_MENU_OPT:
+            menu_opt = (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED)
+                    ? CONTROLLER_SETTINGS_MENU_OPT : MODE_SELECTION_MENU_OPT;
+            menu_opt = (CheckButtonStatus(BTN_UP) == BTN_PRESSED)
+                    ? COMMUNICATION_MENU_OPT : MODE_SELECTION_MENU_OPT;
+            break;
+        //... similar to other cases;
     }
     return 0;
 }

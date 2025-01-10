@@ -1,5 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include "db/PinConfig.c"
+
+#define CTL_START 0
+#define CTL_STOP  1
+#define CTL_FAULT 2
 
 #define NUM_OF_MOTOR    4
 #define BRUSHED_1_CFG   0
@@ -25,6 +30,9 @@
 
 #define ENABLED     true
 #define DISABLED    false
+
+// Controller status
+static uint8_t controller_status = CTL_STOP;
 
 typedef struct motor_cfg {
     uint8_t type_of_motor;
@@ -68,20 +76,49 @@ bool motor_controlled[] = {
     DISABLED,   // STEPPER
 };
 
+uint8_t getControllerStatus() {
+    return controller_status;
+}
+
 // Find previous motor configuration enabled
-uint8_t goToPreviousMotor(uint8_t motor_opt) {
-    for (int i = motor_opt; i >= 0; i--) {
+// This used to trace which motor is controlled
+// If reached top or bottom of 'motor_controlled', return false
+bool getPreviousMotor(uint8_t* motor_opt) {
+    for (int i = *motor_opt - 1; i >= 0; i--) {
         if (motor_controlled[i] == ENABLED) {
-            return i;
+            *motor_opt = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Find first next motor configuration enabled from top
+bool getNextMotor(uint8_t* motor_opt) {
+    for (int i = *motor_opt + 1; i < NUM_OF_MOTOR; i++) {
+        if (motor_controlled[i] == ENABLED) {
+            *motor_opt = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Find first motor configuration enabled from bottom
+void getLastMotor(uint8_t* motor_opt) {
+    for (int i = NUM_OF_MOTOR - 1; i >= 0; i--) {
+        if (motor_controlled[i] == ENABLED) {
+            *motor_opt = i;
+            break;
         }
     }
 }
 
-// Find next motor configuration enabled
-uint8_t goToNextMotor(uint8_t motor_opt) {
-    for (int i = motor_opt; i < NUM_OF_MOTOR; i++) {
+void getTopMotor(uint8_t* motor_opt) {
+    for (int i = 0; i < NUM_OF_MOTOR; i--) {
         if (motor_controlled[i] == ENABLED) {
-            return i;
+            *motor_opt = i;
+            break;
         }
     }
 }
@@ -91,7 +128,6 @@ MotorConfig_t getMotorConfig(uint8_t motor) {
     return motor_cfg_db[motor];
 }
 
-//
 void updateControlMode(uint8_t mode) {
     switch (mode) {
         case ONE_BRUSHED_MODE:
@@ -114,6 +150,8 @@ void updateControlMode(uint8_t mode) {
 }
 
 void saveMotorConfig(uint8_t motor, MotorConfig_t* motor_cfg);
+
+bool checkPinIdentical();
 
 void updateSetPoint(uint8_t motor,
                     uint8_t control_purpose,
