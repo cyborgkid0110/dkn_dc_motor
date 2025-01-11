@@ -2,6 +2,10 @@
 #include "db/MotorConfig.c"
 #include "ButtonHandler.c"
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                  Definition                                   //
+///////////////////////////////////////////////////////////////////////////////////
+
 #define MOTOR_PIN_CFG   0
 #define INDICATOR_CFG   1
 
@@ -22,53 +26,59 @@
 
 #define PWM_PIN_OPTIONS     4
 #define FUNC_PIN_OPTIONS    9
+
+typedef void (*changePinOption)(OUTPUT_PIN*);
+
+///////////////////////////////////////////////////////////////////////////////////
+//                               Global variables                                //
+///////////////////////////////////////////////////////////////////////////////////
+
 const OUTPUT_PIN pwm_pin_gr[] = { PWM1_PIN, PWM2_PIN, PWM3_PIN, PWM4_PIN};
 const OUTPUT_PIN func_pin_gr[] = { FUNC1_PIN, FUNC2_PIN, FUNC3_PIN, FUNC4_PIN,
-                                 FUNC5_PIN, FUNC6_PIN, FUNC7_PIN, FUNC8_PIN, NONE_PIN};
+                                   FUNC5_PIN, FUNC6_PIN, FUNC7_PIN, FUNC8_PIN, NONE_PIN};
 
 static bool menu_used = false;
 static uint8_t cfg_profile = INDICATOR_CFG;
 static uint8_t pin_cfg_menu_state = PIN_SELECTION_STATE;
 static uint8_t field_state = CFG_PROFILE_STATE;
 static uint8_t motor_opt = BRUSHED_1_CFG;
-static void (*changeOptionFunc)(void) = NULL;
-static uint8_t option_index;
+
+static changePinOption changeOptionFunc = NULL;
+static OUTPUT_PIN* pin;
+static int pin_opt_index;
+
 MotorPinCfg_t* motor_pin_cfg;
 IndicatorPinCfg_t* indicator_pin_cfg;
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                Main functions                                 //
+///////////////////////////////////////////////////////////////////////////////////
+
 uint8_t PinConfiguration() {
+    uint8_t menu_screen;
     if (!menu_used) {
         getTopMotor(&motor_opt);
         getMotorPinConfig(&motor_pin_cfg);
         getIndicatorPinConfig(&indicator_pin_cfg);
         menu_used = true;
     }
-    uint8_t menu_screen = 3;
     switch (cfg_profile) {
         case MOTOR_PIN_CFG:
-            menu_screen = MotorPinConfig();
+            menu_screen = Motor_PinConfigMenu();
             break;
         case INDICATOR_CFG:
-            menu_screen = IndicatorPinConfig();
+            menu_screen = Indicator_PinConfigMenu();
             break;
     }
     return menu_screen;
 }
 
-uint8_t IndicatorPinConfig() {
+uint8_t Indicator_PinConfigMenu() {
+    bool status;
     switch (pin_cfg_menu_state) {
         case PIN_SELECTION_STATE:
-            Indicator_PinSelection();
-            if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
-                if (checkPinIdentical()) {
-                    field_state = CFG_PROFILE_STATE;
-                    menu_used = false;
-                    return 0;
-                }
-                else {
-                    // indicate error using Controller Log
-                }
-            }
+            status = Indicator_PinSelection();
+            return (status) ? 0 : 3;
             break;
         case OPTION_SELECTION_STATE:
             Indicator_OptionSelection();
@@ -77,20 +87,12 @@ uint8_t IndicatorPinConfig() {
     return 3;
 }
 
-uint8_t MotorPinConfig() {
+uint8_t Motor_PinConfigMenu() {
+    bool status;
     switch (pin_cfg_menu_state) {
         case PIN_SELECTION_STATE:
-            Motor_PinSelection();
-            if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
-                if (checkPinIdentical()) {
-                    field_state = CFG_PROFILE_STATE;
-                    menu_used = false;
-                    return 0;
-                }
-                else {
-                    // indicate error using Controller Log
-                }
-            }
+            status = Motor_PinSelection();
+            return (status) ? 0 : 3;
             break;
         case OPTION_SELECTION_STATE:
             Motor_OptionSelection();
@@ -99,48 +101,121 @@ uint8_t MotorPinConfig() {
     return 3;
 }
 
-void Motor_PinSelection() {
-    // switch (field_state) {
-    //     case CFG_PROFILE_STATE:
-    //         changeOptionFunc = updateMotorField;
-    //         field_state = (CheckButtonStatus(BTN_UP) == BTN_PRESSED)
-    //                         ? DIRECTION_FIELD_STATE : MOTOR_TYPE_FIELD_STATE;
-    //         field_state = (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED)
-    //                         ? CONTROL_PURPOSE_FIELD_STATE : MOTOR_TYPE_FIELD_STATE;
-    //         break;
-    //     //...other cases are similar, except these 2 cases:
-    //     case THRESHOLD_FIELD_STATE:
-    //         changeOptionFunc = updateThresholdField;
-    //         if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-    //             field_state = (motor_cfg.type_of_motor != STEPPER_CFG)
-    //                         ? DIRECTION_FIELD_STATE : ANGLE_STEP_FIELD_STATE;
-    //         }
-    //         else if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-    //             field_state = SET_POINT_FIELD_STATE;
-    //         }
-    //         break;
-    //     case DIRECTION_FIELD_STATE:
-    //         changeOptionFunc = updateDirectionField;
-    //         if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-    //             field_state = (motor_cfg.type_of_motor != STEPPER_CFG)
-    //                         ? THRESHOLD_FIELD_STATE : ANGLE_STEP_FIELD_STATE;
-    //         }
-    //         else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-    //             field_state = MOTOR_TYPE_FIELD_STATE;
-    //         }
-    //         break;
-    // }
+bool Motor_PinSelection() {
+    bool status = false;    // false = NOT QUIT MENU, true = QUIT MENU
 
-    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        changeMotorPinFieldUp();
+    if (CheckButtonStatus(BTN_OK) == BTN_PRESSED &&
+        getCOMMode() == COM_MODE_DATA_TRANSFER_ONLY) 
+    {
+        if (getCOMMode() == COM_MODE_DATA_TRANSFER_ONLY) {
+            pin_cfg_menu_state = OPTION_SELECTION_STATE;
+            getOptionIndex();
+        }
+        else {
+            // indicate error using Controller Log
+        }
+        return status;
     }
-    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        changeMotorPinFieldDown();
+    else if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
+        if (CheckPinIdentical()) {
+            field_state = CFG_PROFILE_STATE;
+            menu_used = false;
+            status = true;
+        }
+        else {
+            // indicate error using Controller Log
+        }
+        return status;
     }
-    else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
-        pin_cfg_menu_state = OPTION_SELECTION_STATE;
-        getOptionIndex();
+
+    switch (field_state) {
+        case CFG_PROFILE_STATE:
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = (motor_pin_cfg->motor_type == STEPPER_MOTOR_TYPE)
+                            ? STEP_PIN_STATE : EN_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = PWM_A_PIN_STATE;
+            }
+            break;
+        case PWM_A_PIN_STATE:
+            setInputCallBack(changePWMPin, &(motor_pin_cfg->PWM_A));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = CFG_PROFILE_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = PWM_B_PIN_STATE;
+            }
+            break;
+        case PWM_B_PIN_STATE:
+            setInputCallBack(changePWMPin, &(motor_pin_cfg->PWM_B));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = PWM_A_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = (motor_pin_cfg->motor_type == BRUSHED_MOTOR_TYPE)
+                            ? DIR_PIN_STATE : PWM_C_PIN_STATE;
+            }
+            break;
+        case PWM_C_PIN_STATE:
+            setInputCallBack(changePWMPin, &(motor_pin_cfg->PWM_C));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = PWM_B_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = (motor_pin_cfg->motor_type == STEPPER_MOTOR_TYPE)
+                            ? PWM_D_PIN_STATE : DIR_PIN_STATE;
+            }
+            break;
+        case PWM_D_PIN_STATE:
+            setInputCallBack(changePWMPin, &(motor_pin_cfg->PWM_D));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = PWM_C_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = DIR_PIN_STATE;
+            }
+            break;
+        case DIR_PIN_STATE:
+            setInputCallBack(changeFuncPin, &(motor_pin_cfg->DIR));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                switch (motor_pin_cfg->motor_type) {
+                    case STEPPER_MOTOR_TYPE:
+                        field_state = PWM_D_PIN_STATE;
+                        break;
+                    case BRUSHLESS_MOTOR_TYPE:
+                        field_state = PWM_C_PIN_STATE;
+                        break;
+                    default:
+                        field_state = PWM_B_PIN_STATE;
+                        break;
+                }
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = EN_PIN_STATE;
+            }
+            break;
+        case EN_PIN_STATE:
+            setInputCallBack(changeFuncPin, &(motor_pin_cfg->EN));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = DIR_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = (motor_pin_cfg->motor_type == STEPPER_MOTOR_TYPE)
+                            ? STEP_PIN_STATE : CFG_PROFILE_STATE;
+            }
+            break;
+        case STEP_PIN_STATE:
+            setInputCallBack(changeFuncPin, &(motor_pin_cfg->STEP));
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = EN_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = CFG_PROFILE_STATE;
+            }
+            break;
     }
+    return status;
 }
 
 void Motor_OptionSelection() {
@@ -152,40 +227,48 @@ void Motor_OptionSelection() {
         case CFG_PROFILE_STATE:
             changeConfigProfile(getPreviousMotor, getLastMotor);
             break;
-        case PWM_A_PIN_STATE:
-        case PWM_B_PIN_STATE:
-        case PWM_C_PIN_STATE:
-        case PWM_D_PIN_STATE:
-            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-                changePWMPinUp();
-            }
-            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-                changePWMPinDown();
-            }
-            break;
-        case DIR_PIN_STATE:
-        case EN_PIN_STATE:
-        case STEP_PIN_STATE:
-            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-                changeFuncPinUp();
-            }
-            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-                changeFuncPinDown();
-            }
+        default:
+            changeOptionFunc(pin);
             break;
     }
 }
 
-void Indicator_PinSelection() {
-    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        changeIndicatorPinFieldUp();
+bool Indicator_PinSelection() {
+    bool status = false;    // false = NOT QUIT MENU, true = QUIT MENU
+    if (CheckButtonStatus(BTN_OK) == BTN_PRESSED &&) 
+    {
+        if (getCOMMode() == COM_MODE_DATA_TRANSFER_ONLY) {
+            pin_cfg_menu_state = OPTION_SELECTION_STATE;
+        }
+        else {
+            // indicate error using Controller Log
+        }
+        return status;
     }
-    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        changeIndicatorPinFieldDown();
+    else if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
+        if (CheckPinIdentical()) {
+            field_state = CFG_PROFILE_STATE;
+            menu_used = false;
+            status = true;
+        }
+        else {
+            // indicate error using Controller Log
+        }
+        return status;
     }
-    else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
-        pin_cfg_menu_state = OPTION_SELECTION_STATE;
+    switch (field_state) {
+        case CFG_PROFILE_STATE:
+            // setInputCallBack(changeFuncPin, &(motor_pin_cfg->[pin])); // with other cases
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = FAULT_PIN_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = START_PIN_STATE;
+            }
+            break;
+        // ... other cases are similar
     }
+    return status;
 }
 
 void Indicator_OptionSelection() {
@@ -196,29 +279,26 @@ void Indicator_OptionSelection() {
         case CFG_PROFILE_STATE:
             changeConfigProfile(getLastMotor, getTopMotor);
             break;
-        case START_PIN_STATE:
-        case STOP_PIN_STATE:
-        case FAULT_PIN_STATE:
-            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-                changeFuncPinUp();
-            }
-            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-                changeFuncPinDown();
-            }
+        default:
+            changeOptionFunc(pin);
             break;
     }
 }
 
-void changeConfigProfile(bool (*getMotorCfgProfile1)(uint8_t*), bool (*getMotorCfgProfile2)(uint8_t*)) {
+///////////////////////////////////////////////////////////////////////////////////
+//                               Other functions                                 //
+///////////////////////////////////////////////////////////////////////////////////
+
+void changeConfigProfile(bool (*getMotorEnabled1)(uint8_t*), bool (*getMotorEnabled2)(uint8_t*)) {
     bool status;
 
     if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        status = getMotorCfgProfile1(&motor_opt);
+        status = getMotorEnabled1(&motor_opt);
         if (!status) {
             cfg_profile = INDICATOR_CFG;
         }
     } else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        status = getMotorCfgProfile2(&motor_opt);
+        status = getMotorEnabled2(&motor_opt);
         if (!status) {
             cfg_profile = INDICATOR_CFG;
         }
@@ -226,65 +306,71 @@ void changeConfigProfile(bool (*getMotorCfgProfile1)(uint8_t*), bool (*getMotorC
 }
 
 static void getOptionIndex() {
-    OUTPUT_PIN pin;
     OUTPUT_PIN* list;
     uint8_t len;
-    bool pwm_pin_type = false;
+    bool pwm_pin_type = false;  // false = FUNC_PIN, true = PWM_PIN
 
     switch (field_state) {
         case PWM_A_PIN_STATE:
-            pin = motor_pin_cfg->PWM_A;
-            pwm_pin_type = true;
-            break;
         case PWM_B_PIN_STATE:
-            pin = motor_pin_cfg->PWM_B;
-            pwm_pin_type = true;
-            break;
         case PWM_C_PIN_STATE:
-            pin = motor_pin_cfg->PWM_C;
-            pwm_pin_type = true;
-            break;
         case PWM_D_PIN_STATE:
             pin = motor_pin_cfg->PWM_D;
             pwm_pin_type = true;
-            break;
-        case DIR_PIN_STATE:
-            pin = motor_pin_cfg->DIR;
-            break;
-        case EN_PIN_STATE:
-            pin = motor_pin_cfg->EN;
-            break;
-        case STEP_PIN_STATE:
-            pin = motor_pin_cfg->STEP;
-            break;
-        case START_PIN_STATE:
-            pin = indicator_pin_cfg->START;
-            break;
-        case STOP_PIN_STATE:
-            pin = indicator_pin_cfg->STOP;
-            break;
-        case FAULT_PIN_STATE:
-            pin = indicator_pin_cfg->FAULT;
-            break;
             break;
     }
     list = (pwm_pin_type) ? pwm_pin_gr : func_pin_gr;
     list = (pwm_pin_type) ? PWM_PIN_OPTIONS : FUNC_PIN_OPTIONS;
 
-    for (uint8_t i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         if (pin == list[i]) {
-            option_index = i;
+            pin_opt_index = i;
             break;
         }
     }
 }
 
-static void changePWMPinUp();
-static void changePWMPinDown();
-static void changeFuncPinUp();
-static void changeFuncPinDown();
+static void changePWMPin(OUTPUT_PIN* pin) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+        pin_opt_index++;
+        if (pin_opt_index == PWM_PIN_OPTIONS) {
+            pin_opt_index = 0;
+        } 
+    }
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+        pin_opt_index--;
+        if (pin_opt_index < 0) {
+            pin_opt_index = PWM_PIN_OPTIONS - 1;
+        } 
+    }
+    else if ((CheckButtonStatus(BTN_OK) == BTN_PRESSED) ||
+             (CheckButtonStatus(BTN_BACK) == BTN_PRESSED))
+    {
+        *pin = pwm_pin_gr[pin_opt_index];
+    }
+}
 
-static void changeMotorPinFieldUp();
-static void changeMotorPinFieldDown();
-static void changeIndicatorPinFieldUp();
-static void changeIndicatorPinFieldDown();
+static void changeFuncPin(OUTPUT_PIN* pin) {
+    if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+        pin_opt_index++;
+        if (pin_opt_index == FUNC_PIN_OPTIONS) {
+            pin_opt_index = 0;
+        } 
+    }
+    else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+        pin_opt_index--;
+        if (pin_opt_index < 0) {
+            pin_opt_index = FUNC_PIN_OPTIONS - 1;
+        } 
+    }
+    else if ((CheckButtonStatus(BTN_OK) == BTN_PRESSED) ||
+             (CheckButtonStatus(BTN_BACK) == BTN_PRESSED))
+    {
+        *pin = func_pin_gr[pin_opt_index];
+    }
+}
+
+static setInputCallBack(changePinOption func, OUTPUT_PIN* pin_ptr) {
+    changeOptionFunc = func;
+    pin = pin_ptr;
+}

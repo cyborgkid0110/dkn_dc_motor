@@ -3,6 +3,10 @@
 #include "ButtonHandler.c"
 #include "db/MotorConfig.c"
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                  Definition                                   //
+///////////////////////////////////////////////////////////////////////////////////
+
 #define FIELD_SELECT_STATE  0
 #define INPUT_STATE         1
 
@@ -19,6 +23,10 @@
 #define CURRENT_CHANGE_STEP     1
 #define ANGLE_STEP_CHANGE_STEP  5
 
+///////////////////////////////////////////////////////////////////////////////////
+//                               Global variables                                //
+///////////////////////////////////////////////////////////////////////////////////
+
 static bool menu_used = false;
 static uint8_t controller_menu_state = FIELD_SELECT_STATE;
 static uint8_t field_state = MOTOR_TYPE_FIELD_STATE;
@@ -26,7 +34,12 @@ static uint8_t motor_opt = BRUSHED_1_CFG;
 static void (*updateInputFunc)(void) = updateMotorField;
 MotorConfig_t motor_cfg;
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                Main functions                                 //
+///////////////////////////////////////////////////////////////////////////////////
+
 uint8_t ControllerMenu() {
+    bool status;
     if (!menu_used) {
         getTopMotor(&motor_opt);
         getMotorConfig(motor_opt);
@@ -34,10 +47,8 @@ uint8_t ControllerMenu() {
     }
     switch (controller_menu_state) {
         case FIELD_SELECT_STATE:
-            FieldSelect();
-            if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
-                return 0;
-            }
+            status = FieldSelect();
+            return (status) ? 0 : 2;
             break;
         case INPUT_STATE:
             InputHandler();
@@ -46,32 +57,35 @@ uint8_t ControllerMenu() {
     return 2;
 }
 
-void FieldSelect() {
+bool FieldSelect() {
     if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
         field_state = MOTOR_TYPE_FIELD_STATE;
         menu_used = false;
         saveMotorConfig(motor_opt, &motor_cfg);
-        return;
+        return true;
     }
-    if (CheckButtonStatus(BTN_OK) == BTN_PRESSED && 
-        field_state != CURRENT_VALUE_FIELD_STATE) 
+    else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED && 
+             field_state != CURRENT_VALUE_FIELD_STATE &&
+             getCOMMode() == COM_MODE_DATA_TRANSFER_ONLY) 
     {
         controller_menu_state = INPUT_STATE;
-        return;
+        return false;
     }
     switch (field_state) {
         case MOTOR_TYPE_FIELD_STATE:
             updateInputFunc = updateMotorField;
-            field_state = (CheckButtonStatus(BTN_UP) == BTN_PRESSED)
-                            ? DIRECTION_FIELD_STATE : MOTOR_TYPE_FIELD_STATE;
-            field_state = (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED)
-                            ? CONTROL_PURPOSE_FIELD_STATE : MOTOR_TYPE_FIELD_STATE;
+            if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
+                field_state = DIRECTION_FIELD_STATE;
+            }
+            else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
+                field_state = CONTROL_PURPOSE_FIELD_STATE;
+            }
             break;
         //...other cases are similar, except these 2 cases:
         case THRESHOLD_FIELD_STATE:
             updateInputFunc = updateThresholdField;
             if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-                field_state = (motor_cfg.type_of_motor != STEPPER_CFG)
+                field_state = (motor_cfg.motor_type != STEPPER_CFG)
                             ? DIRECTION_FIELD_STATE : ANGLE_STEP_FIELD_STATE;
             }
             else if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
@@ -81,7 +95,7 @@ void FieldSelect() {
         case DIRECTION_FIELD_STATE:
             updateInputFunc = updateDirectionField;
             if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-                field_state = (motor_cfg.type_of_motor != STEPPER_CFG)
+                field_state = (motor_cfg.motor_type != STEPPER_CFG)
                             ? THRESHOLD_FIELD_STATE : ANGLE_STEP_FIELD_STATE;
             }
             else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
@@ -89,6 +103,7 @@ void FieldSelect() {
             }
             break;
     }
+    return false;
 }
 
 void InputHandler() {
@@ -101,6 +116,10 @@ void InputHandler() {
         updateInputFunc();
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+//                               Other functions                                 //
+///////////////////////////////////////////////////////////////////////////////////
 
 void updateMotorField() {
     if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
@@ -117,7 +136,7 @@ void updateMotorField() {
 
 void updateControlPurposeField() {
     if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        if (motor_cfg.type_of_motor == STEPPER_MOTOR_TYPE) {
+        if (motor_cfg.motor_type == STEPPER_MOTOR_TYPE) {
             if (motor_cfg.control_purpose == POSITION_CONTROL_PURPOSE) {
                 motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE;
             }
@@ -131,7 +150,7 @@ void updateControlPurposeField() {
         }
     }
     else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        if (motor_cfg.type_of_motor == STEPPER_MOTOR_TYPE) {
+        if (motor_cfg.motor_type == STEPPER_MOTOR_TYPE) {
             if (motor_cfg.control_purpose == SPEED_CONTROL_PURPOSE) {
                 motor_cfg.control_purpose == POSITION_CONTROL_PURPOSE;
             }

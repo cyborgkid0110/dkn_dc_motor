@@ -3,14 +3,21 @@
 #include "ButtonHandler.c"
 #include "HomeScreen.c"
 
+///////////////////////////////////////////////////////////////////////////////////
+//                                  Definition                                   //
+///////////////////////////////////////////////////////////////////////////////////
+
 #define HOME_SCREEN_MENU            0
 #define MODE_SELECTION_MENU         1
 #define CONTROLLER_SETTINGS_MENU    2
 #define PIN_CONFIGURATION_MENU      3
 #define COMMUNICATION_MENU          4
 
-uint8_t menu_screen = HOME_SCREEN_MENU;
+///////////////////////////////////////////////////////////////////////////////////
+//                                Main functions                                 //
+///////////////////////////////////////////////////////////////////////////////////
 
+uint8_t menu_screen = HOME_SCREEN_MENU;
 void UserInterface() {
     ResetButtonFlag();
     switch (menu_screen) {
