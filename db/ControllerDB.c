@@ -1,26 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include "PinConfig.c"
-#include "db_config.h"
-
-///////////////////////////////////////////////////////////////////////////////////
-//                                  Definition                                   //
-///////////////////////////////////////////////////////////////////////////////////
-
-typedef struct motor_cfg {
-    uint8_t motor_type;
-    uint8_t control_purpose;
-    double speed_value;
-    double speed_set_point;
-    double speed_threshold;
-    double torque_value;
-    double torque_set_point;
-    double current_threshold;
-    uint16_t angle_position;
-    uint16_t angle_set_point;
-    uint16_t angle_step;
-    bool direction;
-} MotorConfig_t;
+#include "PinConfig.h"
+#include "MotorConfig.h"
+#include "Definitions.h"
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                               Global variables                                //
@@ -28,15 +10,15 @@ typedef struct motor_cfg {
 
 // Controller status
 static uint8_t controller_status = CTL_STOP;
-
 // Communication mode
 static uint8_t com_mode = COM_MODE_DATA_TRANSFER_ONLY;
-
 // Motor Configuration Database
 MotorConfig_t motor_cfg_db[] = CONTROLLER_DEFAULT_CONTROL;
-
-// This indicates which motor is controlled
+// This indicates which motor is currently controlled
 bool motor_enabled[] = MOTOR_ENABLED_DEFAULT;
+// Pin Configuration
+IndicatorPinCfg_t indicator_pin_db = CONTROLLER_INDICATOR_DEFAULT_PIN;
+MotorPinCfg_t motor_pin_db[] = CONTROLLER_DEFAULT_PIN;
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                               Other functions                                 //
@@ -44,6 +26,10 @@ bool motor_enabled[] = MOTOR_ENABLED_DEFAULT;
 
 uint8_t getControllerStatus() {
     return controller_status;
+}
+
+bool setControllerStatus(uint8_t controller_state) {
+
 }
 
 uint8_t getCOMMode() {
@@ -54,9 +40,6 @@ uint8_t setCOMMode(uint8_t mode) {
     com_mode = mode;
 }
 
-// Find previous motor configuration enabled
-// This used to trace which motor is controlled
-// If reached top or bottom of 'motor_enabled', return false
 bool getPreviousMotor(uint8_t* motor_opt) {
     for (int i = *motor_opt - 1; i >= 0; i--) {
         if (motor_enabled[i] == ENABLED) {
@@ -67,7 +50,6 @@ bool getPreviousMotor(uint8_t* motor_opt) {
     return false;
 }
 
-// Find first next motor configuration enabled from top
 bool getNextMotor(uint8_t* motor_opt) {
     for (int i = *motor_opt + 1; i < NUM_OF_MOTOR; i++) {
         if (motor_enabled[i] == ENABLED) {
@@ -78,23 +60,24 @@ bool getNextMotor(uint8_t* motor_opt) {
     return false;
 }
 
-// Find first motor configuration enabled from bottom
-void getLastMotor(uint8_t* motor_opt) {
+bool getLastMotor(uint8_t* motor_opt) {
     for (int i = NUM_OF_MOTOR - 1; i >= 0; i--) {
         if (motor_enabled[i] == ENABLED) {
             *motor_opt = i;
-            break;
+            return true;
         }
     }
+    return false;
 }
 
-void getTopMotor(uint8_t* motor_opt) {
+bool getTopMotor(uint8_t* motor_opt) {
     for (int i = 0; i < NUM_OF_MOTOR; i--) {
         if (motor_enabled[i] == ENABLED) {
             *motor_opt = i;
-            break;
+            return true;
         }
     }
+    return false;
 }
 
 // Get motor configuration
@@ -122,21 +105,3 @@ void updateControlMode(uint8_t mode) {
             break;
     }
 }
-
-void saveMotorConfig(uint8_t motor, MotorConfig_t* motor_cfg);
-
-bool CheckPinIdentical();
-
-void updateSetPoint(uint8_t motor,
-                    uint8_t control_purpose,
-                    double new_set_point);
-
-void updateThreshold(uint8_t motor,
-                    uint8_t control_purpose,
-                    double new_threshold);
-
-void updateAngleStep(uint8_t motor,
-                     uint16_t new_value);
-
-void updateDirection(uint8_t motor,
-                     bool direction);

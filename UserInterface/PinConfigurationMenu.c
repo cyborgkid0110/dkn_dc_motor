@@ -1,6 +1,7 @@
 #include <stdint.h>
-#include "db/MotorConfig.c"
-#include "ButtonHandler.c"
+#include "db/MotorConfig.h"
+#include "ButtonHandler.h"
+#include "UserInterface.h"
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                  Definition                                   //
@@ -33,9 +34,10 @@ typedef void (*changePinOption)(OUTPUT_PIN*);
 //                               Global variables                                //
 ///////////////////////////////////////////////////////////////////////////////////
 
-const OUTPUT_PIN pwm_pin_gr[] = { PWM1_PIN, PWM2_PIN, PWM3_PIN, PWM4_PIN};
-const OUTPUT_PIN func_pin_gr[] = { FUNC1_PIN, FUNC2_PIN, FUNC3_PIN, FUNC4_PIN,
-                                   FUNC5_PIN, FUNC6_PIN, FUNC7_PIN, FUNC8_PIN, NONE_PIN};
+static const OUTPUT_PIN pwm_pin_gr[] = { PWM1_PIN, PWM2_PIN, PWM3_PIN, PWM4_PIN};
+static const OUTPUT_PIN func_pin_gr[] = { FUNC1_PIN, FUNC2_PIN, FUNC3_PIN, 
+                                          FUNC4_PIN, FUNC5_PIN, FUNC6_PIN, 
+                                          FUNC7_PIN, FUNC8_PIN, NONE_PIN , };
 
 static bool menu_used = false;
 static uint8_t cfg_profile = INDICATOR_CFG;
@@ -54,7 +56,7 @@ IndicatorPinCfg_t* indicator_pin_cfg;
 //                                Main functions                                 //
 ///////////////////////////////////////////////////////////////////////////////////
 
-uint8_t PinConfiguration() {
+uint8_t PinConfigurationMenu() {
     uint8_t menu_screen;
     if (!menu_used) {
         getTopMotor(&motor_opt);
@@ -62,6 +64,7 @@ uint8_t PinConfiguration() {
         getIndicatorPinConfig(&indicator_pin_cfg);
         menu_used = true;
     }
+    HMI_Menu_PinConfigurationMenu();
     switch (cfg_profile) {
         case MOTOR_PIN_CFG:
             menu_screen = Motor_PinConfigMenu();
@@ -73,34 +76,47 @@ uint8_t PinConfiguration() {
     return menu_screen;
 }
 
+/**
+ * @brief Menu when accessing controller indicator's pin config
+ */
 uint8_t Indicator_PinConfigMenu() {
     bool status;
     switch (pin_cfg_menu_state) {
         case PIN_SELECTION_STATE:
             status = Indicator_PinSelection();
-            return (status) ? 0 : 3;
+            if (status) {
+                return HOME_SCREEN_MENU;
+            }
             break;
         case OPTION_SELECTION_STATE:
             Indicator_OptionSelection();
             break;
     }
-    return 3;
+    return PIN_CONFIGURATION_MENU;
 }
 
+/**
+ * @brief Menu when accessing motor's pin config
+ */
 uint8_t Motor_PinConfigMenu() {
     bool status;
     switch (pin_cfg_menu_state) {
         case PIN_SELECTION_STATE:
             status = Motor_PinSelection();
-            return (status) ? 0 : 3;
+            if (status) {
+                return HOME_SCREEN_MENU;
+            }
             break;
         case OPTION_SELECTION_STATE:
             Motor_OptionSelection();
             break;
     }
-    return 3;
+    return PIN_CONFIGURATION_MENU;
 }
 
+/**
+ * @brief Menu when accessing motor's pin config
+ */
 bool Motor_PinSelection() {
     bool status = false;    // false = NOT QUIT MENU, true = QUIT MENU
 
@@ -223,13 +239,11 @@ void Motor_OptionSelection() {
         pin_cfg_menu_state = PIN_SELECTION_STATE;
         return;
     }
-    switch(field_state) {
-        case CFG_PROFILE_STATE:
-            changeConfigProfile(getPreviousMotor, getLastMotor);
-            break;
-        default:
-            changeOptionFunc(pin);
-            break;
+    else if (field_state == CFG_PROFILE_STATE) {
+        changeConfigProfile(getPreviousMotor, getLastMotor);
+    }
+    else {
+        changeOptionFunc(pin);
     }
 }
 
@@ -241,7 +255,7 @@ bool Indicator_PinSelection() {
             pin_cfg_menu_state = OPTION_SELECTION_STATE;
         }
         else {
-            // indicate error using Controller Log
+            HMI_Warning("Cannot change the configuration");
         }
         return status;
     }
@@ -250,9 +264,10 @@ bool Indicator_PinSelection() {
             field_state = CFG_PROFILE_STATE;
             menu_used = false;
             status = true;
+            HMI_Log("Configuration saved");
         }
         else {
-            // indicate error using Controller Log
+            HMI_Warning("Pins are not identical");
         }
         return status;
     }
@@ -275,13 +290,11 @@ void Indicator_OptionSelection() {
     if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
         pin_cfg_menu_state = PIN_SELECTION_STATE;
     }
-    switch(field_state) {
-        case CFG_PROFILE_STATE:
-            changeConfigProfile(getLastMotor, getTopMotor);
-            break;
-        default:
-            changeOptionFunc(pin);
-            break;
+    else if (field_state == CFG_PROFILE_STATE) {
+        changeConfigProfile(getLastMotor, getTopMotor);
+    }
+    else {
+        changeOptionFunc(pin);
     }
 }
 
@@ -370,7 +383,7 @@ static void changeFuncPin(OUTPUT_PIN* pin) {
     }
 }
 
-static setInputCallBack(changePinOption func, OUTPUT_PIN* pin_ptr) {
+static void setInputCallBack(changePinOption func, OUTPUT_PIN* pin_ptr) {
     changeOptionFunc = func;
     pin = pin_ptr;
 }

@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include "ButtonHandler.c"
-#include "db/MotorConfig.c"
+#include "ButtonHandler.h"
+#include "UserInterface.h"
+#include "db/MotorConfig.h"
+#include "db/Definitions.h"
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                  Definition                                   //
@@ -45,23 +47,26 @@ uint8_t ControllerMenu() {
         getMotorConfig(motor_opt);
         menu_used = true;
     }
+    updateCurrentValue();
+    HMI_Menu_ControllerMenu();
     switch (controller_menu_state) {
         case FIELD_SELECT_STATE:
             status = FieldSelect();
-            return (status) ? 0 : 2;
+            if (status) {
+                return HOME_SCREEN_MENU;
+            }
             break;
         case INPUT_STATE:
             InputHandler();
             break;
     }
-    return 2;
+    return CONTROLLER_SETTINGS_MENU;
 }
 
 bool FieldSelect() {
     if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) {
         field_state = MOTOR_TYPE_FIELD_STATE;
         menu_used = false;
-        saveMotorConfig(motor_opt, &motor_cfg);
         return true;
     }
     else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED && 
@@ -107,10 +112,14 @@ bool FieldSelect() {
 }
 
 void InputHandler() {
-    if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED ||
-        CheckButtonStatus(BTN_OK) == BTN_PRESSED) 
+    if (CheckButtonStatus(BTN_BACK) == BTN_PRESSED) 
     {
         controller_menu_state = FIELD_SELECT_STATE;
+    }
+    else if (CheckButtonStatus(BTN_OK) == BTN_PRESSED) {
+        saveMotorConfig(motor_opt, &motor_cfg);
+        controller_menu_state = FIELD_SELECT_STATE;
+        HMI_Log("Configuration saved");
     }
     else {
         updateInputFunc();
@@ -121,14 +130,18 @@ void InputHandler() {
 //                               Other functions                                 //
 ///////////////////////////////////////////////////////////////////////////////////
 
+void updateCurrentValue() {
+    motor_cfg.speed_value = getCurrentValue(motor_opt, SPEED_CONTROL_PURPOSE);
+    motor_cfg.torque_value = getCurrentValue(motor_opt, TORQUE_CONTROL_PURPOSE);
+    motor_cfg.angle_position = getCurrentValue(motor_opt, POSITION_CONTROL_PURPOSE);
+}
+
 void updateMotorField() {
     if (CheckButtonStatus(BTN_UP) == BTN_PRESSED) {
-        saveMotorConfig(motor_opt, &motor_cfg);
         getPreviousMotor(&motor_opt);
         motor_cfg = getMotorConfig(motor_opt);
     }
     else if (CheckButtonStatus(BTN_DOWN) == BTN_PRESSED) {
-        saveMotorConfig(motor_opt, &motor_cfg);
         getNextMotor(&motor_opt);
         motor_cfg = getMotorConfig(motor_opt);
     }

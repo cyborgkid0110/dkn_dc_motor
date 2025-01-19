@@ -1,5 +1,5 @@
-#include <stdint.h>
-#include "db_config.h"
+#ifndef PIN_CONFIG_H
+#define PIN_CONFIG_H
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                  Definition                                   //
@@ -25,15 +25,28 @@ typedef struct motor_pin_cfg {
 } MotorPinCfg_t;
 
 ///////////////////////////////////////////////////////////////////////////////////
-//                               Global variables                                //
+//                             Function prototypes                               //
 ///////////////////////////////////////////////////////////////////////////////////
 
-IndicatorPinCfg_t indicator_pin_db = CONTROLLER_INDICATOR_DEFAULT_PIN;
-MotorPinCfg_t motor_pin_db[] = CONTROLLER_DEFAULT_PIN;
-
-///////////////////////////////////////////////////////////////////////////////////
-//                               Other functions                                 //
-///////////////////////////////////////////////////////////////////////////////////
-
+/**
+ * @brief Get the motor pin configuration corresponding to motor index.
+ */
 void getMotorPinConfig(MotorPinCfg_t** pin_cfg);
+
+/**
+ * @brief Get the indicator pin configuration corresponding to motor index.
+ */
 void getIndicatorPinConfig(IndicatorPinCfg_t** pin_cfg);
+
+/**
+ * @brief Reset the pin controller to default pin configuration according to `mode`
+ */
+void resetPinConfig(uint8_t mode);
+
+/**
+ * @brief Check the pins are identical in the configuration. If yes, return `true`,
+ * else `false`.
+ */
+bool CheckPinIdentical();
+
+#endif

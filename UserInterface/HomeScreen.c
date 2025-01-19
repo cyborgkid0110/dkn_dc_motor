@@ -1,6 +1,7 @@
 #include <stdint.h>
-#include "db/MotorConfig.c"
-#include "ButtonHandler.c"
+#include "db/MotorConfig.h"
+#include "UserInterface.h"
+#include "ButtonHandler.h"
 
 ///////////////////////////////////////////////////////////////////////////////////
 //                                  Definition                                   //
@@ -17,6 +18,7 @@
 
 uint8_t menu_opt = MODE_SELECTION_MENU_OPT;
 uint8_t HomeScreen() {
+    HMI_Menu_HomeScreen();
     switch (menu_opt) {
         // with menus can be accessed in data transfer only COM mode:
         case MODE_SELECTION_MENU_OPT:
@@ -31,7 +33,7 @@ uint8_t HomeScreen() {
                     return menu_opt;
                 }
                 else {
-                    // Controller Log function
+                    HMI_Warning("Cannot change field value due to ...");
                 }
             }
             break;
